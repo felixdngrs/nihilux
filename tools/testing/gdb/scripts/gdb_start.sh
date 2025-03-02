@@ -1,0 +1,1 @@
+../../../../scripts/gdb_start.sh
