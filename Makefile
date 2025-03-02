@@ -1,62 +1,80 @@
-# Variablen
+
+# Nihilux
+# Copyright (C) 2025 Felix Dangers fdangers@proton.me
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 DEBUG_MODE=1
 AS_OPTS=
 ifeq ($(DEBUG_MODE), 1)
     AS_OPTS += -g
 endif
 
+SCRIPTS = scripts
+
 LINKER_SCRIPT = linker.ld
+BUILD_DIR = build
+
+ARCH = x86
+ARCH_DIR = arch/${ARCH}
 
 # Bootloader
-BOOTLDR_IN = bootloader.s
-BOOTLDR_OUT = bootloader.o
-BOOTLDR_BIN = bootloader.bin
+BOOTLDR_IN = ${ARCH_DIR}/boot/bootloader.s
+BOOTLDR_OUT = ${BUILD_DIR}/bootloader.o
 
 # Kernel
-KRNL_IN = kernel.s
-KRNL_OUT = kernel.o
-KRNL_BIN = kernel.bin
+KRNL_IN = ${ARCH_DIR}/kernel.s
+KRNL_OUT = ${BUILD_DIR}/kernel.o
 
-# Ausgabe
+# Output
 OS_NAME = nihilos
-BOOTIMG_NAME = boot.img
-OS_ELF = $(OS_NAME).elf
-OS_BIN = $(OS_NAME).bin
+BOOTIMG_NAME = ${BUILD_DIR}/boot.img
+OS_ELF = ${BUILD_DIR}/$(OS_NAME).elf
+OS_BIN = ${BUILD_DIR}/$(OS_NAME).bin
 
-# Werkzeuge
+# Tools
 AS = as
 LD = ld
 OBJCOPY = objcopy
 DD = dd
 RM = rm -f
 BASH = bash
-SHLOG_SCRIPT = $(realpath shlog.sh)
+SHLOG_SCRIPT = $(realpath ${SCRIPTS}/shlog.sh)
 SHLOG = . $(SHLOG_SCRIPT); shlog
 
-# Standardziel
+# Target
 all: build
 
-# Kompilierung des Bootloaders
 $(BOOTLDR_OUT): $(BOOTLDR_IN)
 	@ $(BASH) -c "$(SHLOG) INFO "Assembling bootloader...""
 	$(AS) $(AS_OPTS) -o $@ $<
 
-# Kompilierung des Kernels
 $(KRNL_OUT): $(KRNL_IN)
 	@ $(BASH) -c "$(SHLOG) INFO "Assembling kernel...""
 	$(AS) $(AS_OPTS) -o $@ $<
 
-# Linken von Bootloader und Kernel
+# link bootloader & kernel
 $(OS_ELF): $(BOOTLDR_OUT) $(KRNL_OUT)
 	@ $(BASH) -c "$(SHLOG) INFO "Linking everything...""
 	$(LD) -T $(LINKER_SCRIPT) -o $@ $^
 
-# Erstellen des Binär-Files
+# create binary files
 $(OS_BIN): $(OS_ELF)
 	@ $(BASH) -c "$(SHLOG) INFO "Creating binary...""
 	$(OBJCOPY) -O binary $< $@
 
-# Erstellen des Boot-Images
+# create boot image
 $(BOOTIMG_NAME): $(OS_BIN)
 	@ $(BASH) -c "$(SHLOG) INFO "Creating boot image...""
 	$(RM) $(BOOTIMG_NAME)
@@ -64,13 +82,11 @@ $(BOOTIMG_NAME): $(OS_BIN)
 	$(DD) if=$(OS_BIN) of=$(BOOTIMG_NAME) bs=512 seek=0
 	@ $(BASH) -c "$(SHLOG) SUCCESS "Boot image created.""
 
-# Haupt-Build-Ziel
 build: $(BOOTIMG_NAME)
 	@ $(BASH) -c "$(SHLOG) SUCCESS "$(OS_NAME) has been built!""
 
-# Aufräumen
 clean:
 	@ $(BASH) -c "$(SHLOG) INFO "Cleaning up...""
-	$(RM) $(BOOTLDR_OUT) $(KRNL_OUT) $(OS_ELF) $(OS_BIN) $(BOOTIMG_NAME)
+	$(RM) --recursive --dir ${BUILD_DIR}/*
 
 .PHONY: all build clean
